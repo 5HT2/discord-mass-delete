@@ -4,8 +4,6 @@ A quick tool to retroactively delete all messages (or filter to specific channel
 
 ## Usage
 
-These instructions are for building to Go project. 
-
 ```bash
 git clone git@github.com:l1ving/discord-mass-delete.git
 cd discord-mass-delete
