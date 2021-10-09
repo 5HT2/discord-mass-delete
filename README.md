@@ -1,6 +1,6 @@
 # discord-mass-delete
 
-A quick tool to retroactively delete all messages (or filter to specific channels), extracted from your Discord data backup.
+A quick tool to retroactively delete all messages (or filter to specific channels / guilds), extracted from your Discord data backup.
 
 ## Usage
 
