@@ -40,7 +40,7 @@ This program respects Discord's rate limits, so while it *is* against Discord TO
 
 The first step is required for it to work. 
 Everything afterwards is only something you should do if you are paranoid about your account getting banned.
-- 
+
 - Edit `main.go#deleteChannelMessages()` to not have `Bot ` inside the `Auth` header.
 - Add the regular headers that you would get from deleting a message.
   - Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd>
