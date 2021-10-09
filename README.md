@@ -23,3 +23,13 @@ Example:
 ```bash
 ./mass-delete -dirconfirm -dir "$DIR" -channels "$FILTER" -bottoken "$TOKEN"
 ```
+
+#### Filtering
+
+There are two possible filter flags: `-channels` and `-guilds`. Both are comma separated lists of IDs.
+
+The channels filter takes precedence over guilds. 
+For example, if you specify a channels filter and a channel is not found in the list, it will be skipped.
+If you specify a guilds filter and a channel is not inside one of the specified guilds, it will also be skipped, regardless of the channel setting.
+
+It is not necessary to use both options if you want to select specific channels inside a guild, as supplying the channels is good enough.

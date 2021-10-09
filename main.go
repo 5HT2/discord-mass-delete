@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -19,12 +20,27 @@ var (
 	dirFlag        = flag.String("dir", "", "Directory to search")
 	dirConfirm     = flag.Bool("dirconfirm", false, "Automatically confirm dir is correct")
 	channelsFlag   = flag.String("channels", "", "Channels to filter by")
+	guildsFlag     = flag.String("guilds", "", "Guilds to filter by")
 	botToken       = flag.String("bottoken", "", "Bot token")
 	messagesCsv    = "messages.csv"
+	channelJson    = "channel.json"
 	baseUrl        = "https://discord.com/api/v9/channels/"
 	filterChannels = make([]int64, 0)
+	filterGuilds   = make([]int64, 0)
 )
 
+// ChannelJson is the representation of part of c<number>/channel.json
+type ChannelJson struct {
+	ID    int64      `json:"id,string"`
+	Guild *GuildJson `json:"guild"`
+}
+
+// GuildJson is an object found in ChannelJson
+type GuildJson struct {
+	ID int64 `json:"id,string"`
+}
+
+// Channel is used for keeping track of which messages to delete
 type Channel struct {
 	ID       int64
 	Messages []int64
@@ -33,14 +49,8 @@ type Channel struct {
 func main() {
 	flag.Parse()
 
-	if len(*channelsFlag) > 0 {
-		for _, channel := range strings.Split(*channelsFlag, ",") {
-			id, err := strconv.ParseInt(channel, 10, 64)
-			if err == nil {
-				filterChannels = append(filterChannels, id)
-			}
-		}
-	}
+	filterChannels = parseIntSlice(channelsFlag, ",")
+	filterGuilds = parseIntSlice(guildsFlag, ",")
 
 	// Let the user select a directory
 	dir := selectDir(true)
@@ -52,16 +62,31 @@ func main() {
 	validFilesAmt := len(validFiles)
 	fmt.Printf("Found %v channel folders\n", validFilesAmt)
 	fmt.Printf("Filtering to %v channels\n", len(filterChannels))
+	fmt.Printf("Filtering to %v guilds\n", len(filterGuilds))
 
 	if validFilesAmt == 0 {
 		fmt.Printf("Couldn't find any %s files, maybe try another directory? "+
 			"Make sure you are selecting the messages directory which contains c<number> folders, "+
-			"or a c<number> folder itself. Exiting...", messagesCsv)
+			"or a c<number> folder itself. Exiting...\n", messagesCsv)
 		return
 	}
 
 	channels := extractMessageIDs(validFiles)
 	deleteForAllChannels(channels)
+}
+
+// parseIntSlice will parse flag, separated by delimiter and return a slice
+func parseIntSlice(flag *string, delimiter string) []int64 {
+	slice := make([]int64, 0)
+	if len(*flag) > 0 {
+		for _, item := range strings.Split(*flag, delimiter) {
+			num, err := strconv.ParseInt(item, 10, 64)
+			if err == nil {
+				slice = append(slice, num)
+			}
+		}
+	}
+	return slice
 }
 
 // deleteForAllChannels will delete each message in each channel
@@ -85,7 +110,7 @@ func deleteChannelMessages(url string) error {
 	req.Header.Set("Auth", "Bot "+*botToken)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Printf("Err: %v", err)
+		log.Printf("Error making request: %v\n", err)
 		return err
 	}
 
@@ -94,8 +119,8 @@ func deleteChannelMessages(url string) error {
 
 	if remaining == 0 {
 		now := time.Now()
-		wait := time.Duration(reset - now.Unix()) * time.Second
-		log.Printf("Waiting for %v seconds due to rate limit", wait)
+		wait := time.Duration(reset-now.Unix()) * time.Second
+		log.Printf("Waiting for %v seconds due to rate limit\n", wait)
 		time.Sleep(wait)
 	}
 
@@ -115,22 +140,25 @@ func parseStrUnsafe(str string) int64 {
 	return parsed
 }
 
-// extractChannelID will get the channel ID from a full messages.csv path
-func extractChannelID(file string) int64 {
-	folder := strings.TrimSuffix(file, "/"+messagesCsv)
-	index := strings.LastIndexByte(folder, '/')
-	if index == -1 {
-		log.Fatalf("Index -1 for %s", file)
-	}
-	channel := folder[index+2:]
-	id, err := strconv.ParseInt(channel, 10, 64)
+// getChannelInfo will get the channel.json from the c<number>/channel.json path
+func getChannelInfo(file string) (ChannelJson, error) {
+	folder := strings.TrimSuffix(file, messagesCsv)
+	jsonPath := folder + channelJson
+
+	data, err := ioutil.ReadFile(jsonPath)
 	if err != nil {
-		panic(err)
+		return ChannelJson{}, err
 	}
-	return id
+	var cJson ChannelJson
+	err = json.Unmarshal(data, &cJson)
+	if err != nil {
+		return ChannelJson{}, err
+	}
+
+	return cJson, nil
 }
 
-// contains will check if a slice contains an int
+// contains will check if a slice contains an int64
 func contains(s []int64, e int64) bool {
 	for _, a := range s {
 		if a == e {
@@ -140,16 +168,39 @@ func contains(s []int64, e int64) bool {
 	return false
 }
 
+// getRightOfDelimiter will get everything to the right of delimiter.
+// Using 1 will give you the last result, and using two will give you the last two chunks, and so on.
+func getRightOfDelimiter(str string, delimiter string, offset int) string {
+	split := strings.Split(str, delimiter)
+	fixedOffset := len(split)
+	if offset < 1 {
+		fixedOffset = 0
+		offset = 0
+	}
+	return strings.Join(split[fixedOffset-offset:], delimiter)
+}
+
 // extractMessageIDs will search all given files, and extract messages IDs in matching channels
 func extractMessageIDs(files []string) []Channel {
 	channels := make([]Channel, 0)
-	totalMsgs := 0
+	totalMessages := 0
 
 	for _, file := range files {
-		id := extractChannelID(file)
-		channel := Channel{ID: id}
+		cJson, err := getChannelInfo(file)
+		if err != nil {
+			log.Printf("Skipping \"%s\" because: %v\n", getRightOfDelimiter(file, "/", 2), err)
+			continue
+		} else if cJson.Guild == nil && len(filterGuilds) > 0 {
+			// TODO: add debug flag
+			// log.Printf("Skipping \"%s\" because cJson.Guild is nil\n", getRightOfDelimiter(file, "/", 2))
+			continue
+		}
 
-		if len(filterChannels) > 0 && !contains(filterChannels, id) {
+		if len(filterChannels) > 0 && !contains(filterChannels, cJson.ID) {
+			continue
+		}
+
+		if len(filterGuilds) > 0 && !contains(filterGuilds, cJson.Guild.ID) {
 			continue
 		}
 
@@ -158,6 +209,8 @@ func extractMessageIDs(files []string) []Channel {
 			fmt.Printf("Couldn't open file \"%s\": %v\n", file, err)
 			continue
 		}
+
+		channel := Channel{ID: cJson.ID}
 
 		r := csv.NewReader(csvF)
 
@@ -178,18 +231,18 @@ func extractMessageIDs(files []string) []Channel {
 
 			idInt, err := strconv.ParseInt(id, 10, 64)
 			if err != nil {
-				fmt.Printf("Error converting \"%s\" to an int: %v", id, err)
+				fmt.Printf("Error converting \"%s\" to an int: %v\n", id, err)
 				continue
 			}
 
-			totalMsgs += 1
+			totalMessages += 1
 			channel.Messages = append(channel.Messages, idInt)
 		}
 
 		channels = append(channels, channel)
 	}
 
-	fmt.Printf("Found %v channels with %v messages\n", len(channels), totalMsgs)
+	fmt.Printf("Found %v channels with %v messages\n", len(channels), totalMessages)
 	return channels
 }
 
@@ -231,7 +284,7 @@ func checkFileExists(path string) bool {
 	} else if os.IsNotExist(err) {
 		return false // file does not exist
 	} else { // schrodinger's file
-		log.Printf("Error: %v", err)
+		log.Printf("Error with schrodinger's file: %v\n", err)
 		panic(err)
 	}
 }
