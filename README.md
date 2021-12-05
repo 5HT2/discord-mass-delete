@@ -4,7 +4,7 @@ A quick tool to retroactively delete all messages (or filter to specific channel
 
 **DISCLAIMER:** It wasn't until recently that I discovered that Discord has decided to not include messages from servers you are not currently in, inside your Discord data request. This contradicts what their [support article](https://support.discord.com/hc/en-us/articles/360004957991) says and is likely a GDPR violation, given your messages still exist and are accessiblr when you leave a server.
 
-The data request, however, still does include all DMs that you have sent a message in or opened, as far as I can tell. I have an opened ticket (#17970549) in a special channel I was given specifically for these issues, but I have not been given any response since 2021/11/05, after noting that it was likely a GDPR violations.
+The data request, however, still does include all DMs that you have sent a message in or opened, as far as I can tell. I have an opened ticket (#17970549) in a special channel I was given specifically for these issues, but I have not been given any response since 2021/11/05, after noting that it was likely a GDPR violation.
 
 Discord has **ignored** further requests to contact them about this matter and has not fixed this issue. This will likely continue to be an issue until somebody makes an official GDPR complaint.
 
