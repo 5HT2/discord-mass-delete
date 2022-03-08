@@ -11,7 +11,7 @@ Discord has **ignored** further requests to contact them about this matter and h
 ## Usage
 
 ```bash
-git clone git@github.com:l1ving/discord-mass-delete.git
+git clone git@github.com:5HT2/discord-mass-delete.git
 cd discord-mass-delete
 make
 ./mass-delete -h # Run the program with help arguments
