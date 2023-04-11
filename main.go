@@ -168,6 +168,8 @@ func parseIntSlice(flag *string, delimiter string) []int64 {
 // deleteForAllChannels will delete each message in each channel
 func deleteForAllChannels(channels map[int64]Channel) {
 	// Reset retry channels upon new run
+	retryAttempts = 0
+	retryMessages = 0
 	retryChannels = make(map[int64]Channel, 0)
 
 	for _, channel := range channels {
