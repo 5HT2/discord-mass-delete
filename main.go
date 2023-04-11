@@ -62,15 +62,50 @@ type Channel struct {
 
 // SearchResult is used when parsing search results to valid files
 type SearchResult struct {
-	URL     string `json:"url,omitempty"`
-	Content struct {
-		Error   *string `json:"error,omitempty"`
-		Content *string `json:"content,omitempty"`
-	} `json:"content"`
+	URL     string               `json:"url,omitempty"`
+	Content SearchResultMessages `json:"content,omitempty"`
 }
 
-// SearchResultContent is used when parsing SearchResult.Content
-type SearchResultContent struct {
+func (s *SearchResultMessages) UnmarshalJSON(data []byte) error {
+	d := string(data)
+	if d == "null" || string(data) == `""` || (len(d) > 0 && d[0:1] != `{`) {
+		return nil
+	}
+
+	var result struct {
+		Error   *string
+		Content string
+	}
+
+	if err := json.Unmarshal(data, &result); err != nil {
+		return err
+	}
+
+	if result.Error == nil && len(result.Content) > 0 {
+		var messages struct {
+			Messages [][]struct {
+				ID        int64 `json:"id,string"`
+				ChannelID int64 `json:"channel_id,string"`
+				Author    struct {
+					ID int64 `json:"id,string"`
+				} `json:"author,omitempty"`
+			} `json:"messages,omitempty"`
+		}
+
+		if err := json.Unmarshal([]byte(result.Content), &messages); err != nil {
+			return nil
+		}
+
+		*s = SearchResultMessages{
+			messages.Messages,
+		}
+	}
+
+	return nil
+}
+
+// SearchResultMessages is used when parsing SearchResult.Content
+type SearchResultMessages struct {
 	Messages [][]struct {
 		ID        int64 `json:"id,string"`
 		ChannelID int64 `json:"channel_id,string"`
@@ -307,29 +342,30 @@ func extractMessageIDs(files []string) map[int64]Channel {
 
 	if *useSearch {
 		for _, file := range files {
-			data, err := os.ReadFile(file)
+			data, err := os.Open(file)
 			if err != nil {
 				log.Printf("Skipping \"%s\" because: %v\n", file, err)
 				continue
 			}
 
 			var results []SearchResult
-			err = json.Unmarshal(data, &results)
+			err = json.NewDecoder(data).Decode(&results)
+			data.Close()
 			if err != nil {
 				log.Printf("Skipping \"%s\" because: %v\n", file, err)
 				continue
 			}
 
 			for _, result := range results {
-				if ok := searchUrlRegex.MatchString(result.URL); ok && result.Content.Content != nil {
-					var resultContent SearchResultContent
-					err = json.Unmarshal([]byte(*result.Content.Content), &resultContent)
-					if err != nil {
-						log.Printf("Skipping \"%s\" because: (unmarshal) %v\n%s\n", result.URL, err, *result.Content.Content)
-						continue
-					}
+				if ok := searchUrlRegex.MatchString(result.URL); ok {
+					//var resultContent SearchResultContent
+					//err = json.Unmarshal([]byte(*result.Content.Content), &resultContent)
+					//if err != nil {
+					//	log.Printf("Skipping \"%s\" because: (unmarshal) %v\n%s\n", result.URL, err, *result.Content.Content)
+					//	continue
+					//}
 
-					for _, messages := range resultContent.Messages {
+					for _, messages := range result.Content.Messages {
 						for _, message := range messages {
 							if len(filterAuthors) > 0 && !contains(filterAuthors, message.Author.ID) {
 								log.Printf("Skipping \"%v\" because filterAuthors contains \"%v\"", message.ID, message.Author.ID)
