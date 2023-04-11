@@ -3,9 +3,12 @@
 A quick tool to retroactively delete all messages (or filter to specific channels / guilds), extracted from your Discord data request, or
 from search results.
 
+Discord has now fixed their GDPR violations (which I reported to them) since
+the [2022/11/10 GDPR fine](https://edpb.europa.eu/news/national-news/2023/french-sa-fines-discord-eur-800000_en)
+
 <details>
     <summary>
-        Previous disclaimer, now fixed since the [2022/11/10 GDPR fine](https://edpb.europa.eu/news/national-news/2023/french-sa-fines-discord-eur-800000_en)
+        Old disclaimer about Discord data requests.
     </summary>
 
 **DISCLAIMER:** It wasn't until recently that I discovered that Discord has decided to not include messages from servers you are not
