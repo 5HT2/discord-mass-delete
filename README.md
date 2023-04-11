@@ -4,7 +4,7 @@ A quick tool to retroactively delete all messages (or filter to specific channel
 from search results.
 
 Discord has now fixed their GDPR violations (which I reported to them) since
-the [2022/11/10 GDPR fine](https://edpb.europa.eu/news/national-news/2023/french-sa-fines-discord-eur-800000_en)
+the [2022/11/10 GDPR fine](https://edpb.europa.eu/news/national-news/2023/french-sa-fines-discord-eur-800000_en).
 
 <details>
     <summary>
