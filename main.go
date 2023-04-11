@@ -20,14 +20,15 @@ import (
 )
 
 var (
-	dirFlag      = flag.String("dir", os.Getenv("DISCORD_DIR"), "Directory to search")
-	dirConfirm   = flag.Bool("dirconfirm", false, "Automatically confirm dir is correct")
-	useSearch    = flag.Bool("usesearch", false, "Parse the value of a search result JSON instead")
-	channelsFlag = flag.String("channels", os.Getenv("DISCORD_CHANNELS"), "Channels to filter by")
-	guildsFlag   = flag.String("guilds", os.Getenv("DISCORD_GUILDS"), "Guilds to filter by (only non-search)")
-	authorsFlag  = flag.String("authors", os.Getenv("DISCORD_AUTHORS"), "Search result authors to filter by")
-	botToken     = flag.String("bottoken", os.Getenv("DISCORD_BOT_TOKEN"), "Bot token")
-	userToken    = flag.String("usertoken", os.Getenv("DISCORD_USER_TOKEN"), "User token")
+	dirConfirm = flag.Bool("dirconfirm", false, "Automatically confirm dir is correct")
+	useSearch  = flag.Bool("usesearch", false, "Parse the value of a search result JSON instead")
+
+	dirFlag      *string
+	channelsFlag *string
+	guildsFlag   *string
+	authorsFlag  *string
+	botToken     *string
+	userToken    *string
 
 	messagesCsv    = "messages.csv"
 	channelJson    = "channel.json"
@@ -80,7 +81,16 @@ type SearchResultContent struct {
 }
 
 func main() {
-	_ = godotenv.Load() // Load so flags can default to env if set
+	_ = godotenv.Load()
+
+	// Set flags now that we've loaded the env. Necessary to be able to default to env values.
+	dirFlag = flag.String("dir", os.Getenv("DISCORD_DIR"), "Directory to search")
+	channelsFlag = flag.String("channels", os.Getenv("DISCORD_CHANNELS"), "Channels to filter by")
+	guildsFlag = flag.String("guilds", os.Getenv("DISCORD_GUILDS"), "Guilds to filter by (only non-search)")
+	authorsFlag = flag.String("authors", os.Getenv("DISCORD_AUTHORS"), "Search result authors to filter by")
+	botToken = flag.String("bottoken", os.Getenv("DISCORD_BOT_TOKEN"), "Bot token")
+	userToken = flag.String("usertoken", os.Getenv("DISCORD_USER_TOKEN"), "User token")
+
 	flag.Parse()
 
 	filterChannels = parseIntSlice(channelsFlag, ",")
